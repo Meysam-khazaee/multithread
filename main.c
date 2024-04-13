@@ -109,7 +109,7 @@ char *new_hash_function(char *input, int k) {
 
 int main() {
     double start_time = clock();
-    char *hash_result = new_hash_function("meysam_khazaee", 10);
+    char *hash_result = new_hash_function("meysam_khazaee", THREAD_NUMBER);
 
     double end_time = clock();
     double execution_time = (end_time - start_time) / CLOCKS_PER_SEC;

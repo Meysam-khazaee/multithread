@@ -3,23 +3,25 @@ import threading
 import hashlib
 import time
 
-itrate_number = 10
+itratetion_number = 2**20
+thread_number = 10
 
-def new_hash_function(input_value, k):
+def new_hash_function(input, k):
     threads = []
-    last_sha1s = [["" for element in range(itrate_number)] for element in range(k)]
+    last_sha1s = [["" for element in range(itratetion_number)] for element in range(k)]
     mutex = threading.Lock()
     
     def thread_function(thread_id):
         mutex.acquire()
         nonlocal last_sha1s  # Access last_sha1s in the enclosing scope
         group_mate = thread_id ^ 1  # XOR with 1 to get the group mate
-        for counter in range(itrate_number):
+        for counter in range(itratetion_number):
             if counter == 0 :
-                data = f"{thread_id}{counter}{input_value}"
+                data = f"{thread_id}{counter}{input}"
             else:
-                while(last_sha1s[group_mate][counter-1] == "") {}
-                data = f"{thread_id}{last_sha1s[group_mate][counter-1]}{counter}{input_value}"
+                while(last_sha1s[group_mate][counter-1] == ""):
+                    pass
+                data = f"{thread_id}{last_sha1s[group_mate][counter-1]}{counter}{input}"
             sha1 = hashlib.sha1(data.encode()).hexdigest()
             last_sha1s[thread_id][counter] = sha1
         mutex.release()
@@ -49,7 +51,7 @@ def new_hash_function(input_value, k):
 
 def main():
     start_time = time.time()
-    hash_result = new_hash_function("meysam_khazaee",10)
+    hash_result = new_hash_function("meysam_khazaee", thread_number)
     end_time = time.time()
     execution_time = end_time - start_time
     print("Hash Value:", hash_result)
