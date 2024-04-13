@@ -3,34 +3,34 @@
 #include <string.h>
 #include <pthread.h>
 #include <openssl/sha.h>
+#include <math.h>
 
-// mshadow: rename and change value
 // mshadow: add input n byte
-#define ITERATE_NUMBER 10
+// (int)pow(2,20)
+#define ITERATION_NUMBER 10
 #define THREAD_NUMBER 10
 
 typedef struct {
     int thread_id;
     char ***last_sha1s;
-    const char *input_value;
+    const char *input;
 } thread_data_t;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
-// Add a flag for each thread group-mate hash generating completion
+// pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
 
 void *thread_function(void *arg) {
     thread_data_t *data = (thread_data_t *)arg;
-    int group_mate = data->thread_id ^ 1;  // XOR with 1 for find group mate    
-    for (int counter = 0; counter < ITERATE_NUMBER; counter++) {
-        // mshadow: set 1024 use macro
-        char data_str[1024];
+    int group_mate = data->thread_id ^ 1;  // XOR with 1 for finding group mate    
+    for (int counter = 0; counter < ITERATION_NUMBER; counter++) {
+        char data_str[(sizeof(data->thread_id)/sizeof(int)) + (SHA_DIGEST_LENGTH * 2 + 1) + (sizeof(counter)/sizeof(int)) + strlen(data->input) + 1];
+        
         if (counter == 0) {
-            snprintf(data_str, sizeof(data_str), "%d%d%s", data->thread_id, counter, data->input_value);
+            snprintf(data_str, sizeof(data_str), "%d%d%s", data->thread_id, counter, data->input);
         } 
         else if (strlen(data->last_sha1s[group_mate][counter - 1]) != 0) {
             pthread_mutex_lock(&mutex);
-            snprintf(data_str, sizeof(data_str), "%d%s%d%s", data->thread_id, data->last_sha1s[group_mate][counter - 1], counter, data->input_value);
+            snprintf(data_str, sizeof(data_str), "%d%s%d%s", data->thread_id, data->last_sha1s[group_mate][counter - 1], counter, data->input);
             pthread_mutex_unlock(&mutex);
         }
         else{
@@ -39,7 +39,7 @@ void *thread_function(void *arg) {
                 //printf(".");
             } while(strlen(data->last_sha1s[group_mate][counter - 1]) == 0);
             pthread_mutex_lock(&mutex);
-            snprintf(data_str, sizeof(data_str), "%d%s%d%s", data->thread_id, data->last_sha1s[group_mate][counter - 1], counter, data->input_value);
+            snprintf(data_str, sizeof(data_str), "%d%s%d%s", data->thread_id, data->last_sha1s[group_mate][counter - 1], counter, data->input);
             pthread_mutex_unlock(&mutex);
         }
 
@@ -57,13 +57,13 @@ void *thread_function(void *arg) {
     pthread_exit(NULL);
 }
 
-char *new_hash_function(char *input_value, int k) {
+char *new_hash_function(char *input, int k) {
     pthread_t threads[k];
     char*** last_sha1s = (char***)calloc(k,sizeof(char**));
 
     for (int i = 0; i < k; i++) {
-        last_sha1s[i] = (char**)calloc(ITERATE_NUMBER, sizeof(char*));
-        for (int j = 0; j < ITERATE_NUMBER; j++) {
+        last_sha1s[i] = (char**)calloc(ITERATION_NUMBER, sizeof(char*));
+        for (int j = 0; j < ITERATION_NUMBER; j++) {
             last_sha1s[i][j] = (char *)calloc((SHA_DIGEST_LENGTH * 2 + 1),sizeof(char));
         }
     }
@@ -72,7 +72,7 @@ char *new_hash_function(char *input_value, int k) {
     for (int i = 0; i < k; i++) {
         data[i].thread_id = i;
         data[i].last_sha1s = last_sha1s;
-        data[i].input_value = input_value;
+        data[i].input = input;
         pthread_create(&threads[i], NULL, thread_function, &data[i]);
     }
 
@@ -83,7 +83,7 @@ char *new_hash_function(char *input_value, int k) {
     char final_hash[k * SHA_DIGEST_LENGTH * 2 + 1];
     memset(final_hash, 0, sizeof(final_hash));
     for (int i = 0; i < k; i++) {
-        strcat(final_hash, last_sha1s[i][ITERATE_NUMBER - 1]);
+        strcat(final_hash, last_sha1s[i][ITERATION_NUMBER - 1]);
     }
 
     unsigned char overall_sha1[SHA_DIGEST_LENGTH + 1];
@@ -95,7 +95,7 @@ char *new_hash_function(char *input_value, int k) {
     }
 
     for (int i = 0; i < k; i++) {
-        for (int j = 0; j < ITERATE_NUMBER; j++) {
+        for (int j = 0; j < ITERATION_NUMBER; j++) {
             if (NULL != last_sha1s[i][j]){
                 free(last_sha1s[i][j]);
             }
@@ -110,21 +110,12 @@ char *new_hash_function(char *input_value, int k) {
 int main() {
     double start_time = clock();
     char *hash_result = new_hash_function("meysam_khazaee", 10);
-    
-    // Initialize mutex
-    // if (pthread_mutex_init(&mutex, NULL) != 0) {
-    //     perror("pthread_mutex_init failed");
-    //     return 1;
-    // }
 
     double end_time = clock();
     double execution_time = (end_time - start_time) / CLOCKS_PER_SEC;
 
     printf("Hash Value: %s\n", hash_result);
     printf("Execution Time: %.18f seconds\n", execution_time);
-    
-    // Destroy mutex
-    //pthread_mutex_destroy(&mutex);
 
     free(hash_result);
     return 0;
