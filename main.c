@@ -5,9 +5,7 @@
 #include <openssl/sha.h>
 #include <math.h>
 
-// mshadow: add input n byte
-// (int)pow(2,20)
-#define ITERATION_NUMBER 10
+#define ITERATION_NUMBER (int)pow(2,20)
 #define THREAD_NUMBER 10
 
 typedef struct {

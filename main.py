@@ -12,20 +12,23 @@ def new_hash_function(input, k):
     mutex = threading.Lock()
     
     def thread_function(thread_id):
-        mutex.acquire()
         nonlocal last_sha1s  # Access last_sha1s in the enclosing scope
         group_mate = thread_id ^ 1  # XOR with 1 to get the group mate
         for counter in range(itratetion_number):
             if counter == 0 :
                 data = f"{thread_id}{counter}{input}"
-            else:
-                while(last_sha1s[group_mate][counter-1] == ""):
-                    pass
+            elif len(last_sha1s[group_mate][counter - 1]) != 0:
+                mutex.acquire()
                 data = f"{thread_id}{last_sha1s[group_mate][counter-1]}{counter}{input}"
+                mutex.release()
+            else:
+                while(len(last_sha1s[group_mate][counter - 1]) == 0):
+                    pass
+                mutex.acquire()
+                data = f"{thread_id}{last_sha1s[group_mate][counter-1]}{counter}{input}"
+                mutex.release()
             sha1 = hashlib.sha1(data.encode()).hexdigest()
-            last_sha1s[thread_id][counter] = sha1
-        mutex.release()
-            
+            last_sha1s[thread_id][counter] = sha1            
 
     # Create threads and start their execution
     for i in range(k):
