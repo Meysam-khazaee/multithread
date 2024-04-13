@@ -18,6 +18,7 @@ def new_hash_function(input_value, k):
             if counter == 0 :
                 data = f"{thread_id}{counter}{input_value}"
             else:
+                while(last_sha1s[group_mate][counter-1] == "") {}
                 data = f"{thread_id}{last_sha1s[group_mate][counter-1]}{counter}{input_value}"
             sha1 = hashlib.sha1(data.encode()).hexdigest()
             last_sha1s[thread_id][counter] = sha1
